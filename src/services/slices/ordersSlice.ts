@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { TOrder } from '@utils-types';
-import { getFeedsApi, getOrderByNumberApi, getOrdersApi } from '@api';
+import { getFeedsApi, getOrderByNumberApi, getOrdersApi } from '../../utils/burger-api';
 
 type ordersState = {
   feeds: TOrder[];
@@ -11,7 +11,7 @@ type ordersState = {
   selectedOrder: TOrder | null;
 };
 
-const initialState: ordersState = {
+const initOrdersState: ordersState = {
   feeds: [],
   orders: [],
   total: 0,
@@ -20,61 +20,84 @@ const initialState: ordersState = {
   selectedOrder: null
 };
 
-export const fetchFeeds = createAsyncThunk('orders/fetchFeeds', async () =>
-  getFeedsApi()
+export const fetchFeeds = createAsyncThunk(
+  'orders/getFeeds',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await getFeedsApi();
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
-export const fetchOrders = createAsyncThunk('orders/fetchOrders', async () =>
-  getOrdersApi()
+export const fetchOrders = createAsyncThunk(
+  'orders/getUserOrders',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await getOrdersApi();
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 export const fetchOrderByNumber = createAsyncThunk(
-  'orders/fetchOrderByNumber',
-  async (number: number) => getOrderByNumberApi(number)
+  'orders/getByNumber',
+  async (number: number, { rejectWithValue }) => {
+    try {
+      const response = await getOrderByNumberApi(number);
+      return response.orders[0];
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 const ordersSlice = createSlice({
   name: 'orders',
-  initialState,
+  initialState: initOrdersState,
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // Обработка feed-запроса
       .addCase(fetchFeeds.pending, (state) => {
         state.feeds = [];
-      })
-      .addCase(fetchFeeds.fulfilled, (state, action) => {
-        state.feeds = action.payload.orders!;
-        state.total = action.payload.total;
-        state.totalToday = action.payload.totalToday;
         state.error = null;
       })
-      .addCase(fetchFeeds.rejected, (state, action) => {
-        state.error = action.error.message!;
+      .addCase(fetchFeeds.fulfilled, (state, { payload }) => {
+        state.feeds = payload.orders || [];
+        state.total = payload.total;
+        state.totalToday = payload.totalToday;
+      })
+      .addCase(fetchFeeds.rejected, (state, { payload }) => {
+        state.error = payload as string;
       })
 
+      // Обработка orders-запроса
       .addCase(fetchOrders.pending, (state) => {
         state.orders = [];
-      })
-      .addCase(fetchOrders.fulfilled, (state, action) => {
-        state.orders = action.payload;
         state.error = null;
       })
-      .addCase(fetchOrders.rejected, (state, action) => {
-        state.error = action.error.message!;
+      .addCase(fetchOrders.fulfilled, (state, { payload }) => {
+        state.orders = payload || [];
+      })
+      .addCase(fetchOrders.rejected, (state, { payload }) => {
+        state.error = payload as string;
       })
 
+      // Обработка запроса по номеру
       .addCase(fetchOrderByNumber.pending, (state) => {
         state.selectedOrder = null;
-      })
-      .addCase(fetchOrderByNumber.fulfilled, (state, action) => {
-        state.selectedOrder = action.payload.orders[0];
         state.error = null;
       })
-      .addCase(fetchOrderByNumber.rejected, (state, action) => {
-        state.selectedOrder = null;
-        state.error = action.error.message!;
+      .addCase(fetchOrderByNumber.fulfilled, (state, { payload }) => {
+        state.selectedOrder = payload;
+      })
+      .addCase(fetchOrderByNumber.rejected, (state, { payload }) => {
+        state.error = payload as string;
       });
   }
 });
 
-export default ordersSlice;
+export default ordersSlice.reducer;

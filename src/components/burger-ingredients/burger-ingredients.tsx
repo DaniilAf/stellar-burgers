@@ -7,6 +7,7 @@ import { BurgerIngredientsUI } from '../ui/burger-ingredients';
 
 export const BurgerIngredients: FC = () => {
   const ingredients = useSelector(selectIngredients);
+  console.log(ingredients);
 
   const buns = ingredients.filter((ingredient) => ingredient.type === 'bun');
   const mains = ingredients.filter((ingredient) => ingredient.type === 'main');
@@ -19,9 +20,17 @@ export const BurgerIngredients: FC = () => {
   const titleMainRef = useRef<HTMLHeadingElement>(null);
   const titleSaucesRef = useRef<HTMLHeadingElement>(null);
 
-  const [bunsRef, inViewBuns] = useInView({ threshold: 0 });
-  const [mainsRef, inViewFilling] = useInView({ threshold: 0 });
-  const [saucesRef, inViewSauces] = useInView({ threshold: 0 });
+  const [bunsRef, inViewBuns] = useInView({
+    threshold: 0
+  });
+
+  const [mainsRef, inViewFilling] = useInView({
+    threshold: 0
+  });
+
+  const [saucesRef, inViewSauces] = useInView({
+    threshold: 0
+  });
 
   useEffect(() => {
     if (inViewBuns) {

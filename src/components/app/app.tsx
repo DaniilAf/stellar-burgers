@@ -1,4 +1,3 @@
-import { FC, useEffect } from 'react';
 import {
   ConstructorPage,
   Feed,
@@ -16,36 +15,41 @@ import { Routes, Route, useNavigate, useMatch } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 
 import { AppHeader, IngredientDetails, Modal, OrderInfo } from '@components';
+import { useEffect } from 'react';
 import { fetchIngredients } from '../../services/slices/ingredientsSlice';
 import { ProtectedRoute } from '../protectedRoute/protectedRoute';
 import { fetchGetUser } from '../../services/slices/userSlice';
 import { useDispatch } from '../../services/store';
 
-const App: FC = () => {
-  const dispatch = useDispatch();
+const App = () => {
+  const profileMatch = useMatch('profile/orders/:number')?.params.number;
+  const feedMatch = useMatch('feed/:number')?.params.number;
+  const orderNumber = profileMatch || feedMatch;
   const navigate = useNavigate();
   const location = useLocation();
   const background = location.state?.background;
 
-  const profileMatch = useMatch('profile/orders/:number')?.params.number;
-  const feedMatch = useMatch('feed/:number')?.params.number;
-  const orderNumber = profileMatch || feedMatch;
+  const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(fetchGetUser());
     dispatch(fetchIngredients());
-  }, [dispatch]);
-
-  const onOrderNumberDisplay = (orderNumber: string | undefined) =>
-    (orderNumber && orderNumber.padStart(7, '#0')) || '';
+  }, []);
 
   return (
     <div className={styles.app}>
       <AppHeader />
       <Routes location={background || location}>
         <Route path='/feed' element={<Feed />} />
+        <Route
+          path='*'
+          element={
+            <div className={styles.detailPageWrap}>
+              <NotFound404 />
+            </div>
+          }
+        />
         <Route path='/' element={<ConstructorPage />} />
-        <Route path='*' element={<NotFound404 />} />
         <Route
           path='/ingredients/:id'
           element={
@@ -62,12 +66,13 @@ const App: FC = () => {
           element={
             <div className={styles.detailPageWrap}>
               <p className={`text text_type_main-large ${styles.detailHeader}`}>
-                {onOrderNumberDisplay(orderNumber)}
+                {(orderNumber && orderNumber.padStart(7, '#0')) || ''}
               </p>
               <OrderInfo />
             </div>
           }
         />
+
         <Route
           path='/register'
           element={
@@ -84,7 +89,7 @@ const App: FC = () => {
                 <p
                   className={`text text_type_main-large ${styles.detailHeader}`}
                 >
-                  {onOrderNumberDisplay(orderNumber)}
+                  {(orderNumber && orderNumber.padStart(7, '#0')) || ''}
                 </p>
                 <OrderInfo />
               </div>
@@ -141,7 +146,9 @@ const App: FC = () => {
               <Modal
                 children={<IngredientDetails />}
                 title={'Детали ингредиента'}
-                onClose={() => navigate('/')}
+                onClose={() => {
+                  navigate('/');
+                }}
               />
             }
           />
@@ -150,8 +157,10 @@ const App: FC = () => {
             element={
               <Modal
                 children={<OrderInfo />}
-                title={onOrderNumberDisplay(orderNumber)}
-                onClose={() => navigate('/feed')}
+                title={(orderNumber && orderNumber.padStart(7, '#0')) || ''}
+                onClose={() => {
+                  navigate('/feed');
+                }}
               />
             }
           />
@@ -164,8 +173,10 @@ const App: FC = () => {
                     <OrderInfo />
                   </ProtectedRoute>
                 }
-                title={onOrderNumberDisplay(orderNumber)}
-                onClose={() => navigate('/profile/orders')}
+                title={(orderNumber && orderNumber.padStart(7, '#0')) || ''}
+                onClose={() => {
+                  navigate('/profile/orders');
+                }}
               />
             }
           />

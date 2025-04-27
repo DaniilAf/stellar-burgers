@@ -4,122 +4,168 @@ import {
   loginUserApi,
   logoutApi,
   registerUserApi,
-  TLoginData,
-  TRegisterData,
+  type TLoginData,
+  type TRegisterData,
   updateUserApi
-} from '@api';
+} from '../../utils/burger-api';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { TUser } from '@utils-types';
+import { type TUser } from '@utils-types';
 import { deleteCookie, setCookie } from '../../utils/cookie';
 
 type userState = {
   isUserCheckInProgress: boolean;
   user: TUser | null;
-  error: string | undefined;
+  error: string | null;
 };
 
-const initialState: userState = {
+const initialUserState: userState = {
   isUserCheckInProgress: false,
   user: null,
-  error: undefined
+  error: null
+};
+
+const handleAuthSuccess = (state: userState, payload: { 
+  user: TUser; 
+  accessToken: string; 
+  refreshToken: string 
+}) => {
+  state.user = payload.user;
+  setCookie('accessToken', payload.accessToken);
+  localStorage.setItem('refreshToken', payload.refreshToken);
+  state.isUserCheckInProgress = false;
+  state.error = null;
+};
+
+const handleAuthFailure = (state: userState, error: string) => {
+  state.isUserCheckInProgress = false;
+  state.error = error;
 };
 
 export const fetchRegisterUser = createAsyncThunk(
-  'user/fetchRegisterUser',
-  async (data: TRegisterData) => registerUserApi(data)
+  'user/register',
+  async (data: TRegisterData, { rejectWithValue }) => {
+    try {
+      return await registerUserApi(data);
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
-export const fetchGetUser = createAsyncThunk('user/fetchGetUser', async () =>
-  getUserApi()
+export const fetchGetUser = createAsyncThunk(
+  'user/get',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await getUserApi();
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 export const fetchLogoutUser = createAsyncThunk(
-  'user/fetchLogoutUser',
-  async () => logoutApi()
+  'user/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await logoutApi();
+      return true;
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 export const fetchLoginUser = createAsyncThunk(
-  'user/fetchLoginUser',
-  async (data: TLoginData) => loginUserApi(data)
+  'user/login',
+  async (data: TLoginData, { rejectWithValue }) => {
+    try {
+      return await loginUserApi(data);
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 export const fetchUpdateUser = createAsyncThunk(
-  'user/fetchUpdateUser',
-  async (user: Partial<TRegisterData>) => updateUserApi(user)
+  'user/update',
+  async (user: Partial<TRegisterData>, { rejectWithValue }) => {
+    try {
+      return await updateUserApi(user);
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 const userSlice = createSlice({
   name: 'user',
-  initialState,
+  initialState: initialUserState,
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // Регистрация
       .addCase(fetchRegisterUser.pending, (state) => {
         state.isUserCheckInProgress = true;
       })
-      .addCase(fetchRegisterUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
-        setCookie('accessToken', action.payload.accessToken);
-        localStorage.setItem('refreshToken', action.payload.refreshToken);
-        state.isUserCheckInProgress = false;
+      .addCase(fetchRegisterUser.fulfilled, (state, { payload }) => {
+        handleAuthSuccess(state, payload);
       })
-      .addCase(fetchRegisterUser.rejected, (state) => {
-        state.isUserCheckInProgress = false;
-        console.log('Ошибка регистрации');
+      .addCase(fetchRegisterUser.rejected, (state, { payload }) => {
+        handleAuthFailure(state, payload as string);
       })
 
+      // Получение данных пользователя
       .addCase(fetchGetUser.pending, (state) => {
         state.isUserCheckInProgress = true;
       })
-      .addCase(fetchGetUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
+      .addCase(fetchGetUser.fulfilled, (state, { payload }) => {
+        state.user = payload.user;
         state.isUserCheckInProgress = false;
+        state.error = null;
       })
-      .addCase(fetchGetUser.rejected, (state) => {
-        state.isUserCheckInProgress = false;
-        console.log('Пользователь не авторизован');
+      .addCase(fetchGetUser.rejected, (state, { payload }) => {
+        handleAuthFailure(state, payload as string);
       })
 
+      // Выход
       .addCase(fetchLogoutUser.pending, (state) => {
         state.isUserCheckInProgress = true;
       })
       .addCase(fetchLogoutUser.fulfilled, (state) => {
         state.user = null;
         state.isUserCheckInProgress = false;
+        state.error = null;
         localStorage.removeItem('refreshToken');
         deleteCookie('accessToken');
       })
-      .addCase(fetchLogoutUser.rejected, (state) => {
-        state.isUserCheckInProgress = false;
-        console.log('Не удалось выйти из профиля');
+      .addCase(fetchLogoutUser.rejected, (state, { payload }) => {
+        handleAuthFailure(state, payload as string);
       })
 
+      // Вход
       .addCase(fetchLoginUser.pending, (state) => {
         state.isUserCheckInProgress = true;
       })
-      .addCase(fetchLoginUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
-        state.isUserCheckInProgress = false;
-        setCookie('accessToken', action.payload.accessToken);
-        localStorage.setItem('refreshToken', action.payload.refreshToken);
+      .addCase(fetchLoginUser.fulfilled, (state, { payload }) => {
+        handleAuthSuccess(state, payload);
       })
-      .addCase(fetchLoginUser.rejected, (state, action) => {
-        state.isUserCheckInProgress = false;
-        state.error = action.error.message;
+      .addCase(fetchLoginUser.rejected, (state, { payload }) => {
+        handleAuthFailure(state, payload as string);
       })
 
+      // Обновление данных
       .addCase(fetchUpdateUser.pending, (state) => {
         state.isUserCheckInProgress = true;
       })
-      .addCase(fetchUpdateUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
+      .addCase(fetchUpdateUser.fulfilled, (state, { payload }) => {
+        state.user = payload.user;
         state.isUserCheckInProgress = false;
+        state.error = null;
       })
-      .addCase(fetchUpdateUser.rejected, (state) => {
-        state.isUserCheckInProgress = false;
-        console.log('Не удалось обновить данные профиля');
+      .addCase(fetchUpdateUser.rejected, (state, { payload }) => {
+        handleAuthFailure(state, payload as string);
       });
   }
 });
 
-export default userSlice;
+export default userSlice.reducer;

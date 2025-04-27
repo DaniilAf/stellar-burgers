@@ -1,68 +1,71 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TConstructorIngredient } from '@utils-types';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { type TConstructorIngredient } from '@utils-types';
 
 export type constructorState = {
   bun: TConstructorIngredient | null;
   ingredients: TConstructorIngredient[];
 };
 
-const initialState: constructorState = {
+const getInitialState = (): constructorState => ({
   bun: null,
   ingredients: []
-};
+});
 
-type movingPosition = 1 | -1;
-
-const changeElementIndex = (
-  array: TConstructorIngredient[],
-  element: TConstructorIngredient,
-  movePosition: movingPosition
+const reorderItems = (
+  items: TConstructorIngredient[],
+  itemId: string,
+  offset: number
 ): TConstructorIngredient[] => {
-  const currentElementIndex = array.findIndex(
-    (ingredient) => ingredient.id === element.id
-  );
+  const result = [...items];
+  const fromIndex = result.findIndex(({ id }) => id === itemId);
+  const toIndex = fromIndex + offset;
 
-  const temp = array[currentElementIndex];
-  array[currentElementIndex] = array[currentElementIndex + movePosition];
-  array[currentElementIndex + movePosition] = temp;
+  if (toIndex >= 0 && toIndex < result.length) {
+    [result[fromIndex], result[toIndex]] = [result[toIndex], result[fromIndex]];
+  }
 
-  return array;
+  return result;
 };
 
 const constructorSlice = createSlice({
-  name: 'constructorSlice',
-  initialState,
+  name: 'constructor',
+  initialState: getInitialState(),
   reducers: {
-    addIngredient: (state, action: PayloadAction<TConstructorIngredient>) => {
-      if (action.payload.type === 'bun') {
-        state.bun = action.payload;
-      } else {
-        state.ingredients.push(action.payload);
+    addIngredient: {
+      reducer(state, { payload }: PayloadAction<TConstructorIngredient>) {
+        payload.type === 'bun' 
+          ? (state.bun = payload) 
+          : state.ingredients.push(payload);
+      },
+      prepare(payload: TConstructorIngredient) {
+        return { payload };
       }
     },
-    deleteIngredient: (
-      state,
-      action: PayloadAction<TConstructorIngredient>
-    ) => {
+
+    deleteIngredient: (state, { payload }: PayloadAction<TConstructorIngredient>) => {
       state.ingredients = state.ingredients.filter(
-        (ingredient) => ingredient.id !== action.payload.id
+        ({ id }) => id !== payload.id
       );
     },
+
     clearConstructorData: (state) => {
-      state.bun = null;
-      state.ingredients = [];
+      Object.assign(state, getInitialState());
     },
-    moveIngredientDown: (
-      state,
-      action: PayloadAction<TConstructorIngredient>
-    ) => {
-      changeElementIndex(state.ingredients, action.payload, 1);
-    },
-    moveIngredientUp: (
-      state,
-      action: PayloadAction<TConstructorIngredient>
-    ) => {
-      changeElementIndex(state.ingredients, action.payload, -1);
+
+    moveIngredient: {
+      reducer(state, { payload: { item, direction } }: PayloadAction<{
+        item: TConstructorIngredient;
+        direction: 'up' | 'down';
+      }>) {
+        state.ingredients = reorderItems(
+          state.ingredients,
+          item.id,
+          direction === 'up' ? -1 : 1
+        );
+      },
+      prepare(item: TConstructorIngredient, direction: 'up' | 'down') {
+        return { payload: { item, direction } };
+      }
     }
   }
 });
@@ -71,8 +74,8 @@ export const {
   addIngredient,
   deleteIngredient,
   clearConstructorData,
-  moveIngredientDown,
-  moveIngredientUp
+  moveIngredient: moveIngredientUp,
+  moveIngredient: moveIngredientDown
 } = constructorSlice.actions;
 
-export default constructorSlice;
+export default constructorSlice.reducer;

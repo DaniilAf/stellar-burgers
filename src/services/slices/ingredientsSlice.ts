@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { TIngredient } from '@utils-types';
-import { getIngredientsApi } from '@api';
+import { getIngredientsApi } from '../../utils/burger-api';
 
 type ingredientsState = {
   ingredients: TIngredient[];
@@ -8,20 +8,26 @@ type ingredientsState = {
   error: string | null;
 };
 
-const initialState: ingredientsState = {
+const getInitialState = (): ingredientsState => ({
   ingredients: [],
   isLoading: false,
   error: null
-};
+});
 
 export const fetchIngredients = createAsyncThunk(
-  'ingredients/fetchIngredients',
-  getIngredientsApi
+  'ingredients/fetchAll',
+  async () => {
+    try {
+      return await getIngredientsApi();
+    } catch (error) {
+      throw new Error('Failed to fetch ingredients');
+    }
+  }
 );
 
 const ingredientsSlice = createSlice({
   name: 'ingredients',
-  initialState,
+  initialState: getInitialState(),
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -29,16 +35,15 @@ const ingredientsSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchIngredients.fulfilled, (state, action) => {
+      .addCase(fetchIngredients.fulfilled, (state, { payload }) => {
         state.isLoading = false;
-        state.ingredients = action.payload!;
-        state.error = null;
+        state.ingredients = payload || [];
       })
-      .addCase(fetchIngredients.rejected, (state, action) => {
+      .addCase(fetchIngredients.rejected, (state, { error }) => {
         state.isLoading = false;
-        state.error = action.error.message!;
+        state.error = error.message || 'Unknown error occurred';
       });
   }
 });
 
-export default ingredientsSlice;
+export default ingredientsSlice.reducer;

@@ -1,63 +1,65 @@
-import { orderBurgerApi, TNewOrderResponse } from '@api';
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TOrder } from '@utils-types';
-import { constructorState } from './constructorSlice';
+import { orderBurgerApi, type TNewOrderResponse } from '../../utils/burger-api';
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { type TOrder } from '@utils-types';
+import { type constructorState } from './constructorSlice';
 
 type orderState = {
   orderRequest: boolean;
   orderIngredients: string[];
   orderData: TOrder | null;
+  error: string | null;
 };
 
-const initialState: orderState = {
+const getInitialOrderState = (): orderState => ({
   orderRequest: false,
   orderIngredients: [],
-  orderData: null
-};
+  orderData: null,
+  error: null
+});
 
 export const fetchOrderBurger = createAsyncThunk(
-  'user/fetchOrderBurger',
-  async (data: string[]) => orderBurgerApi(data)
+  'order/create',
+  async (ingredientIds: string[], { rejectWithValue }) => {
+    try {
+      return await orderBurgerApi(ingredientIds);
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
 );
 
 const orderSlice = createSlice({
-  name: 'orderSlice',
-  initialState,
+  name: 'order',
+  initialState: getInitialOrderState(),
   reducers: {
-    createOrder: (state, action: PayloadAction<constructorState>) => {
-      state.orderIngredients = action.payload.ingredients.map(
-        (ingredient) => ingredient._id
-      );
-
-      if (action.payload.bun) {
-        state.orderIngredients.push(action.payload.bun?._id);
-        state.orderIngredients.unshift(action.payload.bun?._id);
+    createOrder: (state, { payload }: PayloadAction<constructorState>) => {
+      const { bun, ingredients } = payload;
+      state.orderIngredients = ingredients.map(ingredient => ingredient._id);
+      
+      if (bun) {
+        state.orderIngredients = [bun._id, ...state.orderIngredients, bun._id];
       }
     },
     clearOrderData: (state) => {
-      state.orderData = null;
-      state.orderIngredients = [];
+      Object.assign(state, getInitialOrderState());
     }
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchOrderBurger.pending, (state) => {
         state.orderRequest = true;
+        state.error = null;
       })
-      .addCase(
-        fetchOrderBurger.fulfilled,
-        (state, action: PayloadAction<TNewOrderResponse>) => {
-          state.orderRequest = false;
-          state.orderData = action.payload.order;
-        }
-      )
-      .addCase(fetchOrderBurger.rejected, (state) => {
+      .addCase(fetchOrderBurger.fulfilled, (state, { payload }) => {
         state.orderRequest = false;
-        console.log('Не удалось разместить заказ');
+        state.orderData = payload.order;
+      })
+      .addCase(fetchOrderBurger.rejected, (state, action) => {
+        state.orderRequest = false;
+        state.error = action.payload as string || 'Order creation failed';
       });
   }
 });
 
 export const { createOrder, clearOrderData } = orderSlice.actions;
-
-export default orderSlice;
+export default orderSlice.reducer;
