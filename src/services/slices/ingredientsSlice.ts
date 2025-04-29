@@ -8,26 +8,20 @@ type ingredientsState = {
   error: string | null;
 };
 
-const getInitialState = (): ingredientsState => ({
+const initialState: ingredientsState = {
   ingredients: [],
   isLoading: false,
   error: null
-});
+};
 
 export const fetchIngredients = createAsyncThunk(
-  'ingredients/fetchAll',
-  async () => {
-    try {
-      return await getIngredientsApi();
-    } catch (error) {
-      throw new Error('Failed to fetch ingredients');
-    }
-  }
+  'ingredients/fetchIngredients',
+  getIngredientsApi
 );
 
-const ingredientsSlice = createSlice({
+export const ingredientsSlice = createSlice({
   name: 'ingredients',
-  initialState: getInitialState(),
+  initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -35,15 +29,16 @@ const ingredientsSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchIngredients.fulfilled, (state, { payload }) => {
+      .addCase(fetchIngredients.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.ingredients = payload || [];
+        state.error = null;
+        state.ingredients = action.payload!;
       })
-      .addCase(fetchIngredients.rejected, (state, { error }) => {
+      .addCase(fetchIngredients.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = error.message || 'Unknown error occurred';
+        state.error = action.error.message!;
       });
   }
 });
 
-export default ingredientsSlice.reducer;
+export default ingredientsSlice;

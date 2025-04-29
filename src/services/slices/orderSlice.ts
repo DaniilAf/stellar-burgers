@@ -1,65 +1,65 @@
-import { orderBurgerApi, type TNewOrderResponse } from '../../utils/burger-api';
-import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { type TOrder } from '@utils-types';
-import { type constructorState } from './constructorSlice';
+import { orderBurgerApi, TNewOrderResponse } from '../../utils/burger-api';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { TOrder } from '@utils-types';
+import { constructorState } from './constructorSlice';
 
 type orderState = {
   orderRequest: boolean;
   orderIngredients: string[];
   orderData: TOrder | null;
-  error: string | null;
+  error: null | string;
 };
 
-const getInitialOrderState = (): orderState => ({
+const initialState: orderState = {
   orderRequest: false,
   orderIngredients: [],
   orderData: null,
   error: null
-});
+};
 
 export const fetchOrderBurger = createAsyncThunk(
-  'order/create',
-  async (ingredientIds: string[], { rejectWithValue }) => {
-    try {
-      return await orderBurgerApi(ingredientIds);
-    } catch (error) {
-      return rejectWithValue((error as Error).message);
-    }
-  }
+  'orderSlice/fetchOrderBurger',
+  async (data: string[]) => orderBurgerApi(data)
 );
 
 const orderSlice = createSlice({
-  name: 'order',
-  initialState: getInitialOrderState(),
+  name: 'orderSlice',
+  initialState,
   reducers: {
-    createOrder: (state, { payload }: PayloadAction<constructorState>) => {
-      const { bun, ingredients } = payload;
-      state.orderIngredients = ingredients.map(ingredient => ingredient._id);
-      
-      if (bun) {
-        state.orderIngredients = [bun._id, ...state.orderIngredients, bun._id];
+    createOrder: (state, action: PayloadAction<constructorState>) => {
+      state.orderIngredients = action.payload.ingredients.map(
+        (ingredient) => ingredient._id
+      );
+
+      if (action.payload.bun) {
+        state.orderIngredients.push(action.payload.bun?._id);
+        state.orderIngredients.unshift(action.payload.bun?._id);
       }
     },
     clearOrderData: (state) => {
-      Object.assign(state, getInitialOrderState());
+      state.orderData = null;
+      state.orderIngredients = [];
     }
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchOrderBurger.pending, (state) => {
         state.orderRequest = true;
-        state.error = null;
       })
-      .addCase(fetchOrderBurger.fulfilled, (state, { payload }) => {
-        state.orderRequest = false;
-        state.orderData = payload.order;
-      })
+      .addCase(
+        fetchOrderBurger.fulfilled,
+        (state, action: PayloadAction<TNewOrderResponse>) => {
+          state.orderRequest = false;
+          state.orderData = action.payload.order;
+        }
+      )
       .addCase(fetchOrderBurger.rejected, (state, action) => {
         state.orderRequest = false;
-        state.error = action.payload as string || 'Order creation failed';
+        state.error = action.error.message!;
       });
   }
 });
 
 export const { createOrder, clearOrderData } = orderSlice.actions;
-export default orderSlice.reducer;
+
+export default orderSlice;
