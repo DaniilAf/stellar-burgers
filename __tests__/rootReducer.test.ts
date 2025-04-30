@@ -8,7 +8,7 @@ describe('Тестирование инициализации стора', () =>
         isLoading: false,
         error: null
       },
-      consctructorSlice: {
+      constructorSlice: {
         bun: null,
         ingredients: []
       },

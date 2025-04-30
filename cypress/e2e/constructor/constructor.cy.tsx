@@ -1,10 +1,12 @@
+const testUrl = 'http://localhost:4000';
+
 describe('Булки и ингредиенты добавляются в конструктор', function () {
   beforeEach(function () {
     cy.intercept('GET', 'api/ingredients', {
       fixture: 'ingredients.json'
     });
     cy.viewport(1300, 800);
-    cy.visit('http://localhost:4222');
+    cy.visit(testUrl);
   });
   it('Булка добавляется', function () {
     cy.get('[data-cy=bun-ingredients]').contains('Добавить').click();
@@ -30,7 +32,7 @@ describe('Модальное окно ингредиента работает п
       fixture: 'ingredients.json'
     });
     cy.viewport(1300, 800);
-    cy.visit('http://localhost:4222');
+    cy.visit(testUrl);
   });
 
   it('Модальное окно открывается', function () {
@@ -72,7 +74,7 @@ describe('Процесс оформления заказа работает пр
       fixture: 'newOrder.json'
     });
     cy.viewport(1300, 800);
-    cy.visit('http://localhost:4222');
+    cy.visit(testUrl);
   });
 
   it('Заказ оформляется', function () {
